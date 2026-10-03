@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Neural Cursor — BCI decoding simulator</title>
+<meta name="description" content="In-browser intracortical BCI simulation: cosine-tuned motor cortex, velocity Kalman filter, LDA click decoder and a Webgrid bits-per-second benchmark.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>Neural Cursor</h1>
+    <p>Spikes → decoder → cursor. A brain–computer interface loop you can break and fix in the browser.</p>
+  </div>
+  <a class="by" href="https://asterius.pro" target="_blank" rel="noopener">Vladislav Makarov</a>
+</header>
+
+<main class="layout">
+  <section class="stage">
+    <canvas id="task" aria-label="Webgrid task"></canvas>
+    <div id="overlay" class="overlay"></div>
+  </section>
+
+  <aside class="panel">
+    <div class="buttons">
+      <button id="calib" class="primary">Calibrate</button>
+      <button id="refit" title="Closed-loop recalibration (Gilja et al., 2012)" disabled>ReFIT 40 s</button>
+      <button id="run">Webgrid 60 s</button>
+    </div>
+
+    <dl class="metrics">
+      <div><dt>Bits per second</dt><dd id="m-bps" class="big">—</dd></div>
+      <div><dt>Words per minute</dt><dd id="m-wpm" class="big">—</dd></div>
+      <div><dt>Correct / wrong</dt><dd id="m-hits">—</dd></div>
+      <div><dt>Timer</dt><dd id="m-time">—</dd></div>
+      <div><dt>Best 60 s run</dt><dd id="m-best">—</dd></div>
+      <div><dt>Held-out R² (vx / vy)</dt><dd id="m-r2">—</dd></div>
+      <div><dt>Click balanced acc.</dt><dd id="m-click">—</dd></div>
+      <div><dt>Live channels</dt><dd id="m-alive">—</dd></div>
+      <div><dt>Since calibration</dt><dd id="m-age">—</dd></div>
+      <div class="wide"><dt>Last run</dt><dd id="m-last">—</dd></div>
+    </dl>
+
+    <div class="controls">
+      <label>Task <select id="mode"><option value="grid">Webgrid (bits per second)</option><option value="speller">Speller — type by thought</option></select></label>
+      <label>Channels <output></output><input id="channels" type="range" min="32" max="1024" step="32" value="256"></label>
+      <label>Spike noise <output></output><input id="noise" type="range" min="0" max="2" step="0.1" value="0.3"></label>
+      <label>Electrode dropout <output></output><input id="dropout" type="range" min="0" max="80" step="5" value="0"></label>
+      <label>Cursor gain <output></output><input id="gain" type="range" min="0.5" max="2" step="0.1" value="1"></label>
+      <label>Grid <output></output><input id="grid" type="range" min="4" max="35" step="1" value="10"></label>
+      <label class="check"><input id="drift" type="checkbox"> Neural drift (tuning changes over time)</label>
+      <label class="check"><input id="showIntent" type="checkbox" checked> Show intention (mouse pointer)</label>
+    </div>
+
+    <figure>
+      <figcaption>Raster — last 3 s, one row per channel</figcaption>
+      <canvas id="raster" class="raster"></canvas>
+    </figure>
+    <figure>
+      <figcaption>Velocity — intended (grey) vs decoded: <span class="x">vx</span> · <span class="y">vy</span></figcaption>
+      <canvas id="trace" class="trace"></canvas>
+    </figure>
+  </aside>
+</main>
+
+<section class="about">
+  <h2>How it works</h2>
+  <div class="cols">
+    <div>
+      <h3>Neural population</h3>
+      <p>Each channel is a cosine-tuned motor-cortex unit (Georgopoulos, 1986): firing rate = baseline + depth · cos(θ − preferred direction) · speed. About 18% of units are tuned to click intent instead. Spikes are Poisson in 20 ms bins, with optional rate noise, electrode dropout and slow random-walk drift of preferred directions.</p>
+    </div>
+    <div>
+      <h3>Calibration</h3>
+      <p>The cursor moves along minimum-jerk trajectories to random targets and pauses to “click”. The population fires as if attempting that movement — an open-loop calibration. 80% of the 40 s session trains the decoder, 20% is held out for R².</p>
+    </div>
+    <div>
+      <h3>Decoder</h3>
+      <p>A velocity Kalman filter (Wu et al., 2003): linear tuning model fitted by least squares, diagonal observation covariance, so every update is a 2×2 problem even at 1024 channels. Click is decoded by linear discriminant analysis on the same bins, smoothed and thresholded.</p>
+    </div>
+    <div>
+      <h3>Metric</h3>
+      <p>Webgrid bits per second = log₂(N − 1) · max(correct − wrong, 0) / t, where N is the number of cells. Your mouse is only the intention signal; the cursor never sees it directly. Try more noise, 50% dropout or drift, watch performance fall, then recalibrate.</p>
+    </div>
+    <div>
+      <h3>Speller</h3>
+      <p>The same decoded cursor and click drive a 30-key on-screen keyboard: copy-type a phrase, fix mistakes with ⌫. Words per minute = (correctly typed characters / 5) per minute — the metric used for text entry by BCI users. Link: <a href="?mode=speller">?mode=speller</a>.</p>
+    </div>
+    <div>
+      <h3>ReFIT</h3>
+      <p>Closed-loop recalibration (Gilja et al., 2012): the simulated user plays the current task for 40 s with 70% computer assist, intended velocity is assumed to point at the target, and the decoder is refitted on that data. After losing half the electrodes it recovers more than a fresh open-loop calibration (scripted user, 256 ch: 18.8 vs 11.4 WPM), because training data now matches how the cursor is really used.</p>
+    </div>
+  </div>
+</section>
+
+<script type="module" src="app.js"></script>
+</body>
+</html>

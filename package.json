@@ -1,0 +1,11 @@
+{
+  "name": "neural-cursor",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "description": "In-browser intracortical BCI simulator: Kalman cursor decoder, Webgrid bps, type-by-thought speller, ReFIT recalibration",
+  "scripts": {
+    "bench": "node src/bench.js"
+  },
+  "license": "MIT"
+}
